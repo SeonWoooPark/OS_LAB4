@@ -538,3 +538,58 @@ procdump(void)
     cprintf("\n");
   }
 }
+
+//New function to print the page tables of a process
+int
+printpt(int pid)
+{
+  struct proc *p;
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+    if(p->pid == pid) {
+      pde_t *pgdir = p->pgdir;
+      cprintf("START PAGE TABLE (pid %d)\n", pid);
+      pde_t *pde;
+      pte_t *pgtab;
+      pte_t *pte;
+
+      for(int pdx = 0; pdx < NPDENTRIES; pdx++) {
+        pde = &pgdir[pdx];
+        if(0 == (*pde & PTE_P) || 0 == (*pde & PTE_U)) {
+          continue;
+        }
+
+        // Get the page table address and translate to virtual address
+        pgtab = (pte_t*)P2V(PTE_ADDR(*pde));
+
+        for(int ptx = 0; ptx < NPTENTRIES; ptx++) {
+          pte = &pgtab[ptx];
+          if(0 == (*pte & PTE_P) || 0 == (*pte & PTE_U)) {
+            continue;
+          }
+
+          // Calculate virtual address
+          uint va = (pdx << PDXSHIFT) | (ptx << PTXSHIFT);
+
+          // Only print if it's in the user part of memory
+          if(va >= p->sz) {
+            continue;
+          }
+
+          // Print the page table entry in the required format
+          cprintf("%x ", va >> PTXSHIFT);  // virtual page number
+          cprintf("P ");  // always present since we checked PTE_P
+          cprintf((*pte & PTE_U) ? "U " : "K ");
+          cprintf((*pte & PTE_W) ? "W " : "- ");
+          cprintf("%x\n", PTE_ADDR(*pte) >> PTXSHIFT);  // physical page number
+        }
+      }
+      cprintf("END PAGE TABLE\n");
+      release(&ptable.lock);
+      return 0;
+    }
+  }
+  release(&ptable.lock);
+  return -1;  // process not found
+}
+

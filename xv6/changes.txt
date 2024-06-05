@@ -1,0 +1,46 @@
+added recurse.c to filesystem
+
+updated Makefile UPROGS EXTRA to include recurse
+
+added a definition for the printpt system call number in syscall.h
+#define SYS_printpt 22
+
+declared the system call in syscall.c.
+extern int sys_printpt(void);
+
+static int (*syscalls[])(void) = {
+  // existing system calls
+  [SYS_printpt]    sys_printpt,
+};
+
+implemented the sys_printpt function in sysproc.c.
+int
+sys_printpt(void)
+{
+  int pid;
+  if (argint(0, &pid) < 0)
+    return -1;
+  return printpt(pid);
+}
+
+Implement the printpt function to actually print the page table entries in proc.c.
+
+added the prototype for the 'printpt' function in defs.h.
+int printpt(int pid);
+
+
+
+Add the user-level interface for the printpt system call.
+user.h
+int printpt(int pid);  // Add this line
+
+usys.S
+SYSCALL(printpt)  // Add this line at the appropriate place with other syscalls
+
+
+edited recurse.c to use printpt (uncommented the code)
+
+2.
+update  the exec for new stack allocation logic
+
+
